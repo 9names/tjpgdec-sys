@@ -20,7 +20,6 @@
  #define JD_TBLCLIP		1	/* Use table for saturation (might be a bit faster but increases 1K bytes of code size) */
 #endif
 
-#endif
 /*---------------------------------------------------------------------------*/
 
 #ifdef __cplusplus
