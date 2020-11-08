@@ -26,10 +26,28 @@ fn main() {
         .write_to_file(out_path.join("bindings.rs"))
         .expect("Couldn't write bindings!");
 
+    // Set up compile time config for lib
+    // #define JD_FORMAT		0   /* Output pixel format 0:RGB888 (3 BYTE/pix), 1:RGB565 (1 WORD/pix) */
+    // Output RGB565 instead of RGB888
+    let rgb_mode = if cfg!(feature = "RGB565") { "1" } else { "0" };
+
+    //#define	JD_USE_SCALE	1	/* Use descaling feature for output */
+    let descaling = if cfg!(feature = "descale") { "1" } else { "0" };
+
+    //#define JD_TBLCLIP		1	/* Use table for saturation (might be a bit faster but increases 1K bytes of code size) */
+    let table_sat = if cfg!(feature = "table_sat") {
+        "1"
+    } else {
+        "0"
+    };
+
     // Build the tjpgd static lib as well
     cc::Build::new()
         .shared_flag(false)
         .static_flag(true)
+        .define("JD_FORMAT", Some(rgb_mode))
+        .define("JD_USE_SCALE", Some(descaling))
+        .define("JD_TBLCLIP", Some(table_sat))
         .file("tjpgd/tjpgd.c")
         .file("src/wrapper.c")
         .compile("jpegdec");
