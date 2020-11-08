@@ -7,10 +7,19 @@
 /* System Configurations */
 
 #define	JD_SZBUF		512	/* Size of stream input buffer */
-#if 0
-#define JD_FORMAT		0	/* Output pixel format 0:RGB888 (3 BYTE/pix), 1:RGB565 (1 WORD/pix) */
-#define	JD_USE_SCALE	1	/* Use descaling feature for output */
-#define JD_TBLCLIP		1	/* Use table for saturation (might be a bit faster but increases 1K bytes of code size) */
+
+#ifndef JD_FORMAT
+# define JD_FORMAT		0	/* Output pixel format 0:RGB888 (3 BYTE/pix), 1:RGB565 (1 WORD/pix) */
+#endif
+
+#ifndef JD_USE_SCALE
+ #define	JD_USE_SCALE	1	/* Use descaling feature for output */
+#endif
+
+#ifndef JD_TBLCLIP
+ #define JD_TBLCLIP		1	/* Use table for saturation (might be a bit faster but increases 1K bytes of code size) */
+#endif
+
 #endif
 /*---------------------------------------------------------------------------*/
 
