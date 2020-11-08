@@ -9,7 +9,6 @@ impl JDEC {
     pub fn new() -> JDEC {
         unsafe { JDEC_new() }
     }
-
 }
 impl Default for JDEC {
     fn default() -> JDEC {
@@ -47,7 +46,11 @@ mod tests {
     #[test]
     fn decode() {
         // Need callback functions for read and write
-        unsafe extern "C" fn _r_out_func(_jd: *mut JDEC, _bitmap: *mut cty::c_void, _rect: *mut JRECT) -> i32{ 
+        unsafe extern "C" fn _r_out_func(
+            _jd: *mut JDEC,
+            _bitmap: *mut cty::c_void,
+            _rect: *mut JRECT,
+        ) -> i32 {
             1 // Pretend we managed to draw successfully
         }
         // Not using rust in-function yet

@@ -69,7 +69,7 @@ fn main() {
     const BUFSIZE: usize = BUF_WIDTH * BUF_HEIGHT;
     // Buffer is 888RGB, so we need 3 bytes per pixel
     const PIXEL_BYTES: usize = 3;
-    
+
     let mut frame_buffer: [cty::c_uchar; BUFSIZE * PIXEL_BYTES] = [0; BUFSIZE * PIXEL_BYTES];
 
     devid.fbuf = frame_buffer.as_mut_ptr() as *mut cty::c_uchar;
@@ -92,9 +92,13 @@ fn main() {
         let (r, g, b) = (r as u32, g as u32, b as u32);
         (r << 16) | (g << 8) | b
     }
-    for (i, d) in fb.iter_mut().enumerate(){
+    for (i, d) in fb.iter_mut().enumerate() {
         let fb_offset = i * 3;
-        *d = from_u8_rgb(frame_buffer[fb_offset],frame_buffer[fb_offset+1], frame_buffer[fb_offset + 2]);
+        *d = from_u8_rgb(
+            frame_buffer[fb_offset],
+            frame_buffer[fb_offset + 1],
+            frame_buffer[fb_offset + 2],
+        );
     }
 
     // Main event loop
