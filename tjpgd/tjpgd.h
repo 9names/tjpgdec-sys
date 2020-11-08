@@ -13,7 +13,7 @@
 #endif
 
 #ifndef JD_USE_SCALE
- #define	JD_USE_SCALE	1	/* Use descaling feature for output */
+ #define JD_USE_SCALE	1	/* Use descaling feature for output */
 #endif
 
 #ifndef JD_TBLCLIP
