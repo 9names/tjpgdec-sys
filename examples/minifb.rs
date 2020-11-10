@@ -4,8 +4,45 @@ use tjpgdec_sys::*;
 const WIDTH: usize = 640;
 const HEIGHT: usize = 480;
 
+use std::fs::File;
+use std::io::prelude::*;
+use std::io::SeekFrom;
+
+#[repr(C)]
+struct io_dev {
+    f: File,         /* File pointer for input function */
+    fb_ptr: *mut u8, /* Pointer to the frame buffer for output function */
+    wfbuf: usize,    /* Width of the frame buffer [pix] */
+}
+
+/// Returns number of bytes read (zero on error)
+unsafe extern "C" fn jpeg_file_read(
+    jd: *mut JDEC,                 /* Decompression object */
+    target_buf: *mut cty::c_uchar, /* Pointer to the read buffer (null to remove data) */
+    len: u32,                      /* Number of bytes to read/remove */
+) -> u32 {
+    let fileptr = (*jd).device as *mut File;
+    let file = fileptr.as_mut().unwrap();
+    if !target_buf.is_null() {
+        /* Read data from input stream */
+        let mut buf = std::slice::from_raw_parts_mut(target_buf, len as usize);
+        file.read(&mut buf).unwrap_or(0) as u32
+    } else {
+        /* Remove data from input stream */
+        file.seek(SeekFrom::Current(len as i64)).unwrap_or(0) as u32
+    }
+}
+
+// Need callback functions for read and write
+unsafe extern "C" fn _r_out_func(
+    _jd: *mut JDEC,
+    _bitmap: *mut cty::c_void,
+    _rect: *mut JRECT,
+) -> i32 {
+    !unimplemented!("TODO: write an output function")
+}
+
 fn main() {
-    let mut fb: [u32; WIDTH * HEIGHT] = [0; WIDTH * HEIGHT];
     // Create our window so we've got somewhere to put our pixels
     let mut window = Window::new(
         "tjpgd demo - ESC to exit",
@@ -19,33 +56,36 @@ fn main() {
     window.limit_update_rate(Some(std::time::Duration::from_micros(1_000_000 / 60)));
 
     let mut work_buffer: [u8; 10000] = [0; 10000];
-
+    let mut fb: [u32; WIDTH * HEIGHT] = [0; WIDTH * HEIGHT];
     // Init our C structs
     let mut jdec = JDEC::new();
-    let mut devid = IODEV::new();
+
+    // Hardcode our render buffer for now
+    const BUF_WIDTH: usize = 640;
+    const BUF_HEIGHT: usize = 480;
+    const BUFSIZE: usize = BUF_WIDTH * BUF_HEIGHT;
+
+    // Buffer is 888RGB, so we need 3 bytes per pixel
+    const PIXEL_BYTES: usize = 3;
+    let mut frame_buffer: [cty::c_uchar; BUFSIZE * PIXEL_BYTES] = [0; BUFSIZE * PIXEL_BYTES];
 
     /* Initialize input stream */
-    // File names are going to be passed as C strings.
-    // To keep us no-std friendly, manually null terminal our &str's
-    let filename = "src/tulips.jpg\0";
-    let file_mode = "rb\0";
-    devid.fp = unsafe {
-        fopen(
-            filename.as_ptr() as *const i8,
-            file_mode.as_ptr() as *const i8,
-        )
+    let filename_r = "src/tulips.jpg";
+    let myfile = File::open(filename_r).expect("no file found");
+    let mut dev = io_dev {
+        f: myfile,
+        fb_ptr: frame_buffer.as_mut_ptr(),
+        wfbuf: BUF_WIDTH,
     };
-    if devid.fp.is_null() {
-        panic!("Could not open file");
-    }
 
     let res = unsafe {
         jd_prepare(
             &mut jdec as *mut JDEC,
-            Some(in_func),
+            Some(jpeg_file_read),
             work_buffer.as_mut_ptr() as *mut cty::c_void,
             work_buffer.len() as u32,
-            &mut devid as *mut _ as *mut cty::c_void,
+            //&mut devid as *mut _ as *mut cty::c_void,
+            &mut dev as *mut _ as *mut cty::c_void,
         )
     };
     if res != JRESULT_JDR_OK {
@@ -60,20 +100,8 @@ fn main() {
         work_buffer.len() as u32 - jdec.sz_pool
     );
 
-    // Hardcode our render buffer for now
-    const BUF_WIDTH: usize = 640;
-    const BUF_HEIGHT: usize = 480;
-
     assert!((jdec.width as usize) <= BUF_WIDTH);
     assert!((jdec.height as usize) <= BUF_HEIGHT);
-    const BUFSIZE: usize = BUF_WIDTH * BUF_HEIGHT;
-    // Buffer is 888RGB, so we need 3 bytes per pixel
-    const PIXEL_BYTES: usize = 3;
-
-    let mut frame_buffer: [cty::c_uchar; BUFSIZE * PIXEL_BYTES] = [0; BUFSIZE * PIXEL_BYTES];
-
-    devid.fbuf = frame_buffer.as_mut_ptr() as *mut cty::c_uchar;
-    devid.wfbuf = jdec.width as u32;
 
     let res = unsafe { jd_decomp(&mut jdec, Some(out_func), 0) }; /* Start to decompress with 1/1 scaling */
     if res == JRESULT_JDR_OK {
@@ -81,10 +109,6 @@ fn main() {
         println!("\rDecompression succeeded.\n");
     } else {
         println!("Failed to decompress. (rc={})\n", res);
-    }
-
-    unsafe {
-        fclose(devid.fp);
     }
 
     /// tjpgd packs rgb into 3 bytes, convert that into a u32 for minifb
