@@ -33,13 +33,21 @@ unsafe extern "C" fn jpeg_file_read(
     }
 }
 
-// Need callback functions for read and write
-unsafe extern "C" fn _r_out_func(
-    jd: *mut JDEC,
-    bitmap: *mut cty::c_void,
-    rect: *mut JRECT,
-) -> i32 {
-    !unimplemented!("TODO: write an output function")
+/// Initial port of C output function. non-functional!
+unsafe extern "C" fn r_out_func(jd: *mut JDEC, bitmap: *mut cty::c_void, rect: *mut JRECT) -> i32 {
+    let iodev = (*jd).device as *mut io_dev;
+    let r = *(rect);
+    let framebuf = (*iodev).fb_ptr as *mut std::ffi::c_void;
+    let (top, bottom, left, right) = (r.top as usize, r.bottom as usize, r.left as usize, r.right as usize);
+
+    let dstoffset = 3 * (top * (*iodev).wfbuf + left);
+    let bws = 3 * (right - left + 1);
+    let bwd = 3 * (*iodev).wfbuf;
+    
+    for y in top..bottom {
+        std::ptr::copy_nonoverlapping(bitmap.add(y * bws), framebuf.add(dstoffset + y * bwd), bws as usize);
+    }
+    return 1;
 }
 
 fn main() {
