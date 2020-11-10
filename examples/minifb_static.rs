@@ -21,8 +21,8 @@ unsafe extern "C" fn jpeg_file_read(
     target_buf: *mut cty::c_uchar, /* Pointer to the read buffer (null to remove data) */
     len: u32,                      /* Number of bytes to read/remove */
 ) -> u32 {
-    let fileptr = (*jd).device as *mut File;
-    let file = fileptr.as_mut().unwrap();
+    let iodev = (*jd).device as *mut io_dev;
+    let mut file = &(*iodev).f;
     if !target_buf.is_null() {
         /* Read data from input stream */
         let mut buf = std::slice::from_raw_parts_mut(target_buf, len as usize);
@@ -34,10 +34,10 @@ unsafe extern "C" fn jpeg_file_read(
 }
 
 // Need callback functions for read and write
-unsafe extern "C" fn _r_out_func(
-    _jd: *mut JDEC,
-    _bitmap: *mut cty::c_void,
-    _rect: *mut JRECT,
+unsafe extern "C" fn r_out_func(
+    jd: *mut JDEC,
+    bitmap: *mut cty::c_void,
+    rect: *mut JRECT,
 ) -> i32 {
     !unimplemented!("TODO: write an output function")
 }
