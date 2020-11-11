@@ -38,29 +38,38 @@ unsafe extern "C" fn r_out_func(jd: *mut JDEC, bitmap: *mut cty::c_void, rect: *
     let iodev = (*jd).device as *mut io_dev;
     let r = *(rect);
     let framebuf = (*iodev).fb_ptr as *mut std::ffi::c_void;
-    let (top, bottom, left, right) = (r.top as usize, r.bottom as usize, r.left as usize, r.right as usize);
+    let (top, bottom, left, right) = (
+        r.top as usize,
+        r.bottom as usize,
+        r.left as usize,
+        r.right as usize,
+    );
 
     let dstoffset = 3 * (top * (*iodev).wfbuf + left);
     let bws = 3 * (right - left + 1);
     let bwd = 3 * (*iodev).wfbuf;
-    
+    println!("Top {}", top);
     for y in top..bottom {
-        std::ptr::copy_nonoverlapping(bitmap.add(y * bws), framebuf.add(dstoffset + y * bwd), bws as usize);
+        std::ptr::copy_nonoverlapping(
+            bitmap.add(y * bws),
+            framebuf.add(dstoffset + y * bwd),
+            bws as usize,
+        );
     }
     return 1;
 }
 
-// Hardcode our render buffer for now
-const BUF_WIDTH: usize = 640;
-const BUF_HEIGHT: usize = 480;
-const BUFSIZE: usize = BUF_WIDTH * BUF_HEIGHT;
-
-// Buffer is 888RGB, so we need 3 bytes per pixel
-static mut frame_buffer: [cty::c_uchar; BUFSIZE * PIXEL_BYTES] = [0; BUFSIZE * PIXEL_BYTES];
-const PIXEL_BYTES: usize = 3;
-
-static mut fb: [u32; WIDTH * HEIGHT] = [0; WIDTH * HEIGHT];
 fn main() {
+    // Hardcode our render buffer for now
+    const BUF_WIDTH: usize = 640;
+    const BUF_HEIGHT: usize = 480;
+    const BUFSIZE: usize = BUF_WIDTH * BUF_HEIGHT;
+
+    // Buffer is 888RGB, so we need 3 bytes per pixel
+    const PIXEL_BYTES: usize = 3;
+
+    let mut fb = vec![0 as u32; WIDTH * HEIGHT];
+    let mut frame_buffer = vec![0 as cty::c_uchar; BUFSIZE * PIXEL_BYTES];
     // Create our window so we've got somewhere to put our pixels
     let mut window = Window::new(
         "tjpgd demo - ESC to exit",
@@ -73,7 +82,7 @@ fn main() {
     });
     window.limit_update_rate(Some(std::time::Duration::from_micros(1_000_000 / 60)));
 
-    let mut work_buffer: [u8; 4000] = [0; 4000];
+    let mut work_buffer = vec![0 as u8; 4000];
 
     // Init our C structs
     let mut jdec = JDEC::new();
@@ -83,7 +92,7 @@ fn main() {
     let myfile = File::open(filename_r).expect("no file found");
     let mut dev = io_dev {
         f: myfile,
-        fb_ptr: unsafe { frame_buffer.as_mut_ptr() },
+        fb_ptr: frame_buffer.as_mut_ptr(),
         wfbuf: BUF_WIDTH,
     };
 
@@ -112,7 +121,7 @@ fn main() {
     assert!((jdec.width as usize) <= BUF_WIDTH);
     assert!((jdec.height as usize) <= BUF_HEIGHT);
 
-    let res = unsafe { jd_decomp(&mut jdec, Some(out_func), 0) }; /* Start to decompress with 1/1 scaling */
+    let res = unsafe { jd_decomp(&mut jdec, Some(r_out_func), 0) }; /* Start to decompress with 1/1 scaling */
     if res == JRESULT_JDR_OK {
         /* Decompression succeeded. You have the decompressed image in the frame buffer here. */
         println!("\rDecompression succeeded.\n");
@@ -125,19 +134,19 @@ fn main() {
         let (r, g, b) = (r as u32, g as u32, b as u32);
         (r << 16) | (g << 8) | b
     }
-    for (i, d) in unsafe { fb.iter_mut().enumerate() } {
+    for (i, d) in fb.iter_mut().enumerate() {
         let fb_offset = i * 3;
         *d = from_u8_rgb(
-            unsafe { frame_buffer[fb_offset] },
-            unsafe { frame_buffer[fb_offset + 1] },
-            unsafe { frame_buffer[fb_offset + 2] },
+            frame_buffer[fb_offset],
+            frame_buffer[fb_offset + 1],
+            frame_buffer[fb_offset + 2],
         );
     }
 
     // Main event loop
     while window.is_open() && !window.is_key_down(Key::Escape) {
         window
-            .update_with_buffer(unsafe { &fb }, WIDTH, HEIGHT)
+            .update_with_buffer( &fb, WIDTH, HEIGHT)
             .unwrap();
     }
 }
