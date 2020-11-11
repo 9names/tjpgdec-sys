@@ -34,6 +34,7 @@ unsafe extern "C" fn jpeg_file_read(
 }
 
 /// Initial port of output function. non-functional!
+
 unsafe extern "C" fn r_out_func(jd: *mut JDEC, bitmap: *mut cty::c_void, rect: *mut JRECT) -> i32 {
     let iodev = (*jd).device as *mut io_dev;
     let r = *(rect);
@@ -48,11 +49,15 @@ unsafe extern "C" fn r_out_func(jd: *mut JDEC, bitmap: *mut cty::c_void, rect: *
     let dstoffset = 3 * (top * (*iodev).wfbuf + left);
     let bws = 3 * (right - left + 1);
     let bwd = 3 * (*iodev).wfbuf;
-    println!("Top {}", top);
-    for y in top..bottom {
+    //println!("bws {} bwd {}", bws, bwd);
+    //println!("top {} bottom {} left {} right {}", top, bottom, left, right);
+    for y in 0..=(bottom-top) {
+        let srcofs = y * bws;
+        let dstofs = dstoffset + (y * bwd);
+        //println!("y {} src {} dst {} cnt {}", y+top, srcofs, dstofs, bws);
         std::ptr::copy_nonoverlapping(
-            bitmap.add(y * bws),
-            framebuf.add(dstoffset + y * bwd),
+            bitmap.add(srcofs),
+            framebuf.add(dstofs),
             bws as usize,
         );
     }
