@@ -46,19 +46,16 @@ unsafe extern "C" fn r_out_func(jd: *mut JDEC, bitmap: *mut cty::c_void, rect: *
         r.right as usize,
     );
 
-    let dstoffset = 3 * (top * (*iodev).wfbuf + left);
-    let bws = 3 * (right - left + 1);
-    let bwd = 3 * (*iodev).wfbuf;
-    //println!("bws {} bwd {}", bws, bwd);
-    //println!("top {} bottom {} left {} right {}", top, bottom, left, right);
+    let dst_start_offset = 3 * (top * (*iodev).wfbuf + left);
+    let src_width_bytes = 3 * (right - left + 1);
+    let dst_width_bytes = 3 * (*iodev).wfbuf;
     for y in 0..=(bottom-top) {
-        let srcofs = y * bws;
-        let dstofs = dstoffset + (y * bwd);
-        //println!("y {} src {} dst {} cnt {}", y+top, srcofs, dstofs, bws);
+        let src_address = y * src_width_bytes;
+        let dst_address = dst_start_offset + (y * dst_width_bytes);
         std::ptr::copy_nonoverlapping(
-            bitmap.add(srcofs),
-            framebuf.add(dstofs),
-            bws as usize,
+            bitmap.add(src_address),
+            framebuf.add(dst_address),
+            src_width_bytes as usize,
         );
     }
     return 1;
@@ -68,13 +65,13 @@ fn main() {
     // Hardcode our render buffer for now
     const BUF_WIDTH: usize = 640;
     const BUF_HEIGHT: usize = 480;
-    const BUFSIZE: usize = BUF_WIDTH * BUF_HEIGHT;
+    const BUF_SIZE: usize = BUF_WIDTH * BUF_HEIGHT;
 
     // Buffer is 888RGB, so we need 3 bytes per pixel
     const PIXEL_BYTES: usize = 3;
 
     let mut fb = vec![0 as u32; WIDTH * HEIGHT];
-    let mut frame_buffer = vec![0 as cty::c_uchar; BUFSIZE * PIXEL_BYTES];
+    let mut frame_buffer = vec![0 as cty::c_uchar; BUF_SIZE * PIXEL_BYTES];
     // Create our window so we've got somewhere to put our pixels
     let mut window = Window::new(
         "tjpgd demo - ESC to exit",
