@@ -49,7 +49,7 @@ unsafe extern "C" fn r_out_func(jd: *mut JDEC, bitmap: *mut cty::c_void, rect: *
     let dst_start_offset = 3 * (top * (*iodev).wfbuf + left);
     let src_width_bytes = 3 * (right - left + 1);
     let dst_width_bytes = 3 * (*iodev).wfbuf;
-    for y in 0..=(bottom-top) {
+    for y in 0..=(bottom - top) {
         let src_address = y * src_width_bytes;
         let dst_address = dst_start_offset + (y * dst_width_bytes);
         std::ptr::copy_nonoverlapping(
@@ -147,8 +147,6 @@ fn main() {
 
     // Main event loop
     while window.is_open() && !window.is_key_down(Key::Escape) {
-        window
-            .update_with_buffer( &fb, WIDTH, HEIGHT)
-            .unwrap();
+        window.update_with_buffer(&fb, WIDTH, HEIGHT).unwrap();
     }
 }
