@@ -6,7 +6,7 @@ edition = "2018"
 # links = "tjpgd"
 
 [dependencies]
-cty = "*"
+cty = "0.2.2"
 
 [build-dependencies]
 bindgen = "^0"
