@@ -82,7 +82,7 @@ fn main() {
     .unwrap_or_else(|e| {
         panic!("{}", e);
     });
-    window.limit_update_rate(Some(std::time::Duration::from_micros(1_000_000 / 60)));
+    window.set_target_fps(60);
 
     let mut work_buffer = vec![0 as u8; 4000];
 
