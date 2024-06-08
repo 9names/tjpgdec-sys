@@ -33,23 +33,6 @@ unsafe extern "C" fn jpeg_file_read(
     }
 }
 
-/// Initial port of C output function. non-functional!
-unsafe extern "C" fn r_out_func(jd: *mut JDEC, bitmap: *mut cty::c_void, rect: *mut JRECT) -> i32 {
-    let iodev = (*jd).device as *mut io_dev;
-    let r = *(rect);
-    let framebuf = (*iodev).fb_ptr as *mut std::ffi::c_void;
-    let (top, bottom, left, right) = (r.top as usize, r.bottom as usize, r.left as usize, r.right as usize);
-
-    let dstoffset = 3 * (top * (*iodev).wfbuf + left);
-    let bws = 3 * (right - left + 1);
-    let bwd = 3 * (*iodev).wfbuf;
-    
-    for y in top..bottom {
-        std::ptr::copy_nonoverlapping(bitmap.add(y * bws), framebuf.add(dstoffset + y * bwd), bws as usize);
-    }
-    return 1;
-}
-
 fn main() {
     // Create our window so we've got somewhere to put our pixels
     let mut window = Window::new(
@@ -61,7 +44,7 @@ fn main() {
     .unwrap_or_else(|e| {
         panic!("{}", e);
     });
-    window.limit_update_rate(Some(std::time::Duration::from_micros(1_000_000 / 60)));
+    window.set_target_fps(60);
 
     let mut work_buffer: [u8; 10000] = [0; 10000];
     let mut fb: [u32; WIDTH * HEIGHT] = [0; WIDTH * HEIGHT];
